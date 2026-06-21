@@ -54,7 +54,7 @@ function Register() {
           Register
         </button>
         <p style={styles.link}>
-          Pehle se account hai? <Link to="/login">Login karo</Link>
+          account exist? <Link to="/login">Login here</Link>
         </p>
       </div>
     </div>

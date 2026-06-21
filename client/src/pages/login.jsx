@@ -48,7 +48,7 @@ function Login() {
           Login
         </button>
         <p style={{ textAlign: 'center', fontSize: '14px' }}>
-          Account nahi hai? <Link to="/register">Register karo</Link>
+         Don't have an account? <Link to="/register">Register here</Link>
         </p>
       </div>
     </div>
