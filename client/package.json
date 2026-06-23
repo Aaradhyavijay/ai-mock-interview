@@ -3,12 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
- "scripts": {
-  "start": "node index.js",
-  "dev": "nodemon index.js",
-  "build": "npx prisma generate"
-},
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "postinstall": "prisma generate"
+  },
   "dependencies": {
+    "@prisma/client": "^5.14.0",
     "axios": "^1.18.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -23,6 +24,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "prisma": "^5.14.0",
     "vite": "^8.0.12"
   }
 }
