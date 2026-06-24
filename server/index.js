@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config({ path: './.env' });
 
 const authRoutes = require('./routes/auth');
 const interviewRoutes = require('./routes/interview');
@@ -16,13 +15,5 @@ app.get('/', (req, res) => {
   res.json({ message: 'AI Mock Interview API running ✅' });
 });
 
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
-});
-
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
