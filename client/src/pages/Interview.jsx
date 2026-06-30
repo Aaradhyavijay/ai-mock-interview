@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import Navbar from '../components/Navbar'
-
-const API_URL = 'https://ai-mock-interview-production-ec99.up.railway.app'
-
+const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 function Interview() {
   const [role, setRole] = useState('Software Engineer Intern')
   const [category, setCategory] = useState('DSA')

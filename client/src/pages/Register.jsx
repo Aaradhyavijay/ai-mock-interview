@@ -2,8 +2,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { useNavigate, Link } from 'react-router-dom'
 
-const API_URL = 'https://ai-mock-interview-production-ec99.up.railway.app'
-
+const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
