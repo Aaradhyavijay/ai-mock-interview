@@ -25,7 +25,6 @@ const generateQuestion = async (req, res) => {
 
   for (const model of models) {
     try {
-      console.log(`Trying model: ${model}`);
       const response = await ai.models.generateContent({
         model: model,
         contents: prompt,
@@ -35,7 +34,6 @@ const generateQuestion = async (req, res) => {
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
 
-      console.log(`Success with model: ${model}`);
       return res.json({ success: true, data: parsed });
     } catch (err) {
       console.error(`Model ${model} failed:`, err.message);
@@ -46,4 +44,42 @@ const generateQuestion = async (req, res) => {
   return res.status(500).json({ error: 'All models failed. Please try again.' });
 };
 
-module.exports = { generateQuestion };
+const evaluateAnswer = async (req, res) => {
+  const { question, userAnswer, idealAnswer } = req.body;
+
+  const prompt = `You are an expert technical interviewer evaluating a candidate's answer.
+
+  Question: ${question}
+  Candidate's Answer: ${userAnswer}
+  Ideal Answer (for reference): ${idealAnswer}
+
+  Evaluate the candidate's answer and respond in this exact JSON format only, no extra text:
+  {
+    "score": <number from 1 to 10>,
+    "strengths": "what the candidate did well, 1-2 sentences",
+    "improvements": "what could be improved, 1-2 sentences",
+    "verdict": "one short encouraging sentence"
+  }`;
+
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+
+      const text = response.text;
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      return res.json({ success: true, data: parsed });
+    } catch (err) {
+      console.error(`Model ${model} failed:`, err.message);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  return res.status(500).json({ error: 'All models failed. Please try again.' });
+};
+
+module.exports = { generateQuestion, evaluateAnswer };

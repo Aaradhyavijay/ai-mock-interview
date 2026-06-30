@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import axios from 'axios'
 import Navbar from '../components/Navbar'
+
 const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
+
 function Interview() {
   const [role, setRole] = useState('Software Engineer Intern')
   const [category, setCategory] = useState('DSA')
@@ -12,6 +14,8 @@ function Interview() {
   const [showHints, setShowHints] = useState(false)
   const [showAnswer, setShowAnswer] = useState(false)
   const [userAnswer, setUserAnswer] = useState('')
+  const [feedback, setFeedback] = useState(null)
+  const [evaluating, setEvaluating] = useState(false)
 
   const generateQuestion = async () => {
     setLoading(true)
@@ -19,6 +23,7 @@ function Interview() {
     setShowHints(false)
     setShowAnswer(false)
     setUserAnswer('')
+    setFeedback(null)
     try {
       const token = localStorage.getItem('token')
       const res = await axios.post(
@@ -31,6 +36,27 @@ function Interview() {
       setError('Failed to generate question. Try again!')
     }
     setLoading(false)
+  }
+
+  const submitAnswer = async () => {
+    if (!userAnswer.trim()) {
+      alert('Please write an answer first!')
+      return
+    }
+    setEvaluating(true)
+    setFeedback(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.post(
+        `${API_URL}/api/interview/evaluate-answer`,
+        { question: question.question, userAnswer, idealAnswer: question.idealAnswer },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setFeedback(res.data.data)
+    } catch (err) {
+      alert('Failed to evaluate answer. Try again!')
+    }
+    setEvaluating(false)
   }
 
   return (
@@ -78,13 +104,32 @@ function Interview() {
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
               <h3 style={{ color: '#4f46e5', marginBottom: '15px' }}>📝 Question</h3>
               <p style={{ fontSize: '16px', color: '#333', lineHeight: '1.6', marginBottom: '20px' }}>{question.question}</p>
+
               <h4 style={{ color: '#555', marginBottom: '10px' }}>✍️ Your Answer</h4>
               <textarea value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} placeholder="Write your answer here..."
                 style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px', minHeight: '120px', resize: 'vertical', boxSizing: 'border-box' }} />
+
+              <button onClick={submitAnswer} disabled={evaluating}
+                style={{ marginTop: '15px', width: '100%', padding: '12px', backgroundColor: evaluating ? '#aaa' : '#3b82f6', color: 'white', border: 'none', borderRadius: '5px', fontSize: '16px', fontWeight: 'bold', cursor: evaluating ? 'not-allowed' : 'pointer' }}>
+                {evaluating ? '⏳ Evaluating...' : '✅ Submit Answer for AI Feedback'}
+              </button>
+
+              {feedback && (
+                <div style={{ marginTop: '15px', backgroundColor: '#eef2ff', padding: '20px', borderRadius: '8px', border: '2px solid #4f46e5' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                    <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#4f46e5' }}>{feedback.score}/10</span>
+                    <span style={{ color: '#4338ca', fontSize: '14px' }}>{feedback.verdict}</span>
+                  </div>
+                  <p style={{ color: '#065f46', marginBottom: '10px' }}><strong>✅ Strengths:</strong> {feedback.strengths}</p>
+                  <p style={{ color: '#92400e' }}><strong>📈 Improvements:</strong> {feedback.improvements}</p>
+                </div>
+              )}
+
               <button onClick={() => setShowHints(!showHints)}
                 style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '5px', fontSize: '15px', cursor: 'pointer' }}>
                 {showHints ? '🙈 Hide Hints' : '💡 Show Hints'}
               </button>
+
               {showHints && (
                 <div style={{ marginTop: '15px', backgroundColor: '#fffbeb', padding: '15px', borderRadius: '5px', border: '1px solid #fcd34d' }}>
                   <h4 style={{ color: '#92400e', marginBottom: '10px' }}>💡 Hints</h4>
@@ -93,16 +138,19 @@ function Interview() {
                   </ul>
                 </div>
               )}
+
               <button onClick={() => setShowAnswer(!showAnswer)}
                 style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '5px', fontSize: '15px', cursor: 'pointer' }}>
                 {showAnswer ? '🙈 Hide Answer' : '✅ Show Ideal Answer'}
               </button>
+
               {showAnswer && (
                 <div style={{ marginTop: '15px', backgroundColor: '#ecfdf5', padding: '15px', borderRadius: '5px', border: '1px solid #6ee7b7' }}>
                   <h4 style={{ color: '#065f46', marginBottom: '10px' }}>✅ Ideal Answer</h4>
                   <p style={{ color: '#064e3b', lineHeight: '1.6' }}>{question.idealAnswer}</p>
                 </div>
               )}
+
               <button onClick={generateQuestion}
                 style={{ marginTop: '20px', width: '100%', padding: '12px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '5px', fontSize: '16px', cursor: 'pointer' }}>
                 🔄 Next Question

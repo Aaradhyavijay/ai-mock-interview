@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-// Sahi tarika: Destructure karke import karein {} ke andar
-const { generateQuestion } = require('../controllers/interviewController'); 
-const { protect } = require('../middleware/auth'); // Agar auth middleware hai
+const { generateQuestion, evaluateAnswer } = require('../controllers/interviewController');
+const { protect } = require('../middleware/auth');
 
 router.post('/generate-question', protect, generateQuestion);
+router.post('/evaluate-answer', protect, evaluateAnswer);
+
 module.exports = router;
