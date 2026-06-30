@@ -19,8 +19,8 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(res.data.user))
       navigate('/dashboard')
     } catch (err) {
-      setError('Invalid email or password')
-    }
+  setError(err.response?.data?.error || 'Registration failed. Try again.')
+}
   }
 
   return (

@@ -21,8 +21,8 @@ function Register() {
       localStorage.setItem('user', JSON.stringify(res.data.user))
       navigate('/dashboard')
     } catch (err) {
-      setError('Registration failed. Try again.')
-    }
+  setError(err.response?.data?.error || 'Registration failed. Try again.')
+}
   }
 
   return (
