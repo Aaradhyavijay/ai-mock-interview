@@ -59,6 +59,29 @@ function Interview() {
     setEvaluating(false)
   }
 
+  const nextQuestion = async () => {
+    // Save session only if feedback exists (answer was submitted)
+    if (feedback && question) {
+      try {
+        const token = localStorage.getItem('token')
+        await axios.post(
+          `${API_URL}/api/interview/save-session`,
+          {
+            question: question.question,
+            userAnswer,
+            score: feedback.score,
+            category,
+            difficulty
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+      } catch (err) {
+        console.error('Failed to save session:', err)
+      }
+    }
+    generateQuestion()
+  }
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
       <Navbar />
@@ -151,7 +174,7 @@ function Interview() {
                 </div>
               )}
 
-              <button onClick={generateQuestion}
+              <button onClick={nextQuestion}
                 style={{ marginTop: '20px', width: '100%', padding: '12px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '5px', fontSize: '16px', cursor: 'pointer' }}>
                 🔄 Next Question
               </button>

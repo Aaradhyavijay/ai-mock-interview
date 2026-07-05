@@ -1,5 +1,8 @@
+require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
+const { Pool } = require('pg');
 
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const models = [
@@ -25,22 +28,16 @@ const generateQuestion = async (req, res) => {
 
   for (const model of models) {
     try {
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-      });
-
+      const response = await ai.models.generateContent({ model, contents: prompt });
       const text = response.text;
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
-
       return res.json({ success: true, data: parsed });
     } catch (err) {
       console.error(`Model ${model} failed:`, err.message);
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
-
   return res.status(500).json({ error: 'All models failed. Please try again.' });
 };
 
@@ -48,7 +45,6 @@ const evaluateAnswer = async (req, res) => {
   const { question, userAnswer, idealAnswer } = req.body;
 
   const prompt = `You are an expert technical interviewer evaluating a candidate's answer.
-
   Question: ${question}
   Candidate's Answer: ${userAnswer}
   Ideal Answer (for reference): ${idealAnswer}
@@ -63,23 +59,54 @@ const evaluateAnswer = async (req, res) => {
 
   for (const model of models) {
     try {
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-      });
-
+      const response = await ai.models.generateContent({ model, contents: prompt });
       const text = response.text;
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
-
       return res.json({ success: true, data: parsed });
     } catch (err) {
       console.error(`Model ${model} failed:`, err.message);
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
-
   return res.status(500).json({ error: 'All models failed. Please try again.' });
 };
 
-module.exports = { generateQuestion, evaluateAnswer };
+const saveSession = async (req, res) => {
+  try {
+    const { question, userAnswer, score, category, difficulty } = req.body;
+    const userId = req.userId;
+
+    await pool.query(
+      'INSERT INTO "Session" ("userId", question, "userAnswer", score, category, difficulty, "createdAt") VALUES ($1, $2, $3, $4, $5, $6, NOW())',
+      [userId, question, userAnswer, score, category, difficulty]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save session' });
+  }
+};
+
+const getStats = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const result = await pool.query(
+      'SELECT COUNT(*) as total, ROUND(AVG(score), 1) as avgScore FROM "Session" WHERE "userId" = $1',
+      [userId]
+    );
+
+    const stats = result.rows[0];
+    res.json({
+      questionsPracticed: parseInt(stats.total) || 0,
+      avgScore: parseFloat(stats.avgscore) || 0
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+};
+
+module.exports = { generateQuestion, evaluateAnswer, saveSession, getStats };

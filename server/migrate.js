@@ -13,6 +13,20 @@ async function migrate() {
       "createdAt" TIMESTAMP DEFAULT NOW()
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "Session" (
+      id SERIAL PRIMARY KEY,
+      "userId" INTEGER REFERENCES "User"(id),
+      question TEXT,
+      "userAnswer" TEXT,
+      score INTEGER,
+      category VARCHAR(100),
+      difficulty VARCHAR(50),
+      "createdAt" TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   console.log('Tables created!');
   await pool.end();
 }
