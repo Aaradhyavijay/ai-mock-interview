@@ -101,6 +101,7 @@ const getStats = async (req, res) => {
     const stats = result.rows[0];
     res.json({
       questionsPracticed: parseInt(stats.total) || 0,
+      sessionsCompleted: parseInt(stats.total) || 0,
       avgScore: parseFloat(stats.avgscore) || 0
     });
   } catch (err) {

@@ -8,7 +8,7 @@ const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 function Dashboard() {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const [stats, setStats] = useState({ questionsPracticed: 0, avgScore: 0 })
+  const [stats, setStats] = useState({ questionsPracticed: 0, sessionsCompleted: 0, avgScore: 0 })
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -42,7 +42,7 @@ function Dashboard() {
               <p style={{ color: '#666', margin: '5px 0 0' }}>Questions Practiced</p>
             </div>
             <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-              <h2 style={{ color: '#10b981', fontSize: '36px', margin: 0 }}>{stats.questionsPracticed}</h2>
+              <h2 style={{ color: '#10b981', fontSize: '36px', margin: 0 }}>{stats.sessionsCompleted}</h2>
               <p style={{ color: '#666', margin: '5px 0 0' }}>Sessions Completed</p>
             </div>
             <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
