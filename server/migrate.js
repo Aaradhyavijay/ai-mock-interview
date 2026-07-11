@@ -27,6 +27,10 @@ async function migrate() {
     )
   `);
 
+  await pool.query(`
+    ALTER TABLE "Session" ADD COLUMN IF NOT EXISTS "sessionId" VARCHAR(100)
+  `);
+
   console.log('Tables created!');
   await pool.end();
 }

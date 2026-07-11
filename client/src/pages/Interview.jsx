@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 
 function Interview() {
+  const [sessionId] = useState(() => crypto.randomUUID())
   const [role, setRole] = useState('Software Engineer Intern')
   const [category, setCategory] = useState('DSA')
   const [difficulty, setDifficulty] = useState('Easy')
@@ -71,7 +72,8 @@ function Interview() {
             userAnswer,
             score: feedback.score,
             category,
-            difficulty
+            difficulty,
+            sessionId
           },
           { headers: { Authorization: `Bearer ${token}` } }
         )

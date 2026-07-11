@@ -74,12 +74,12 @@ const evaluateAnswer = async (req, res) => {
 
 const saveSession = async (req, res) => {
   try {
-    const { question, userAnswer, score, category, difficulty } = req.body;
+    const { question, userAnswer, score, category, difficulty, sessionId } = req.body;
     const userId = req.userId;
 
     await pool.query(
-      'INSERT INTO "Session" ("userId", question, "userAnswer", score, category, difficulty, "createdAt") VALUES ($1, $2, $3, $4, $5, $6, NOW())',
-      [userId, question, userAnswer, score, category, difficulty]
+      'INSERT INTO "Session" ("userId", question, "userAnswer", score, category, difficulty, "sessionId", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+      [userId, question, userAnswer, score, category, difficulty, sessionId]
     );
 
     res.json({ success: true });
@@ -94,14 +94,14 @@ const getStats = async (req, res) => {
     const userId = req.userId;
 
     const result = await pool.query(
-      'SELECT COUNT(*) as total, ROUND(AVG(score), 1) as avgScore FROM "Session" WHERE "userId" = $1',
+      'SELECT COUNT(*) as total, COUNT(DISTINCT "sessionId") as sessions, ROUND(AVG(score), 1) as avgScore FROM "Session" WHERE "userId" = $1',
       [userId]
     );
 
     const stats = result.rows[0];
     res.json({
       questionsPracticed: parseInt(stats.total) || 0,
-      sessionsCompleted: parseInt(stats.total) || 0,
+      sessionsCompleted: parseInt(stats.sessions) || 0,
       avgScore: parseFloat(stats.avgscore) || 0
     });
   } catch (err) {
