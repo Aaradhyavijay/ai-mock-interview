@@ -20,41 +20,43 @@ Most "mock interview" tools either give you a static question bank or just let y
 
 - **Frontend:** React + Vite, React Router, Axios, inline styling (no UI library, kept it lightweight)
 - **Backend:** Node.js, Express
-- **Database:** PostgreSQL (raw `pg` queries, not an ORM — more on why below)
-- **AI:** Google Gemini API (`@google/genai`)
+- **Database:** PostgreSQL (raw pg queries, not an ORM — more on why below)
+- **AI:** Google Gemini API (@google/genai)
 - **Auth:** JWT + bcrypt
 - **Hosting:** Vercel (frontend), Render (backend), Railway (Postgres)
 
 ## A few things that were harder than expected
 
-**Prisma didn't work on Render's free tier.** I started with Prisma 7 and the new client generator, but kept hitting `MODULE_NOT_FOUND` errors on deploy that didn't happen locally. After a few hours of debugging build logs, I switched the whole backend to raw `pg` queries instead. Less convenient than an ORM, but it deploys reliably and I understand exactly what SQL is running.
+**Prisma didn't work on Render's free tier.** I started with Prisma 7 and the new client generator, but kept hitting MODULE_NOT_FOUND errors on deploy that didn't happen locally. After a few hours of debugging build logs, I switched the whole backend to raw pg queries instead. Less convenient than an ORM, but it deploys reliably and I understand exactly what SQL is running.
 
-**Gemini's free tier rate limits are unpredictable.** Some models would return 503s or quota errors mid-demo. I added a fallback list of models (`gemini-2.5-flash-lite` then `gemini-2.5-flash` then `gemini-3.5-flash`) so if one fails, the backend automatically retries with the next one instead of just erroring out.
+**Gemini's free tier rate limits are unpredictable.** Some models would return 503s or quota errors mid-demo. I added a fallback list of models (gemini-2.5-flash-lite then gemini-2.5-flash then gemini-3.5-flash) so if one fails, the backend automatically retries with the next one instead of just erroring out.
 
 **Hosting the backend in India had DNS issues with Railway.** Railway's domains weren't resolving reliably from my network, so I moved the backend to Render and kept Railway just for the Postgres database, connected via its public proxy URL.
 
-**Migrations weren't running on deploy.** My `migrate.js` script created tables using raw `pg` queries, but it was never wired into the `start` script — so on Render, the app booted with a database that had no tables at all, and any route touching the `Session` table returned a 500. Fixed by changing `start` to `node migrate.js && node index.js`, which is safe to run on every deploy since the migration uses `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`.
+**Migrations weren't running on deploy.** My migrate.js script created tables using raw pg queries, but it was never wired into the start script — so on Render, the app booted with a database that had no tables at all, and any route touching the Session table returned a 500. Fixed by changing start to node migrate.js && node index.js, which is safe to run on every deploy since the migration uses CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS.
 
-**"Sessions" and "questions" were the same number.** Every question attempt inserted its own row into `Session`, so a stat meant to represent "how many practice sittings" was really just counting individual questions — attempting 6 questions in one sitting showed 6 sessions. Fixed by generating a `sessionId` (UUID) once per practice page load and attaching it to every question saved during that sitting, then counting `COUNT(DISTINCT sessionId)` for sessions vs. `COUNT(*)` for questions.
+**"Sessions" and "questions" were the same number.** Every question attempt inserted its own row into Session, so a stat meant to represent "how many practice sittings" was really just counting individual questions — attempting 6 questions in one sitting showed 6 sessions. Fixed by generating a sessionId (UUID) once per practice page load and attaching it to every question saved during that sitting, then counting COUNT(DISTINCT sessionId) for sessions vs. COUNT(*) for questions.
 
 ## Running it locally
 
 Backend:
+
 cd server
 npm install
 node migrate.js   # creates User and Session tables
 npm run dev
 
-You'll need a `.env` file with `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, and `PORT`.
+You'll need a .env file with DATABASE_URL, JWT_SECRET, GEMINI_API_KEY, and PORT.
 
 Frontend:
+
 cd client
 npm install
 npm run dev
 
 ## What I'd add next
 
-- A proper `Question` table so questions are normalized instead of duplicated as text in every `Session` row — would also enable analytics like "most-attempted question"
+- A proper Question table so questions are normalized instead of duplicated as text in every Session row — would also enable analytics like "most-attempted question"
 - Move the hardcoded API URLs in the frontend into proper environment variables
 - Add a real ORM/migration system back in once I find one that plays nicer with free-tier hosting
 
