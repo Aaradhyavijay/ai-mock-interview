@@ -4,10 +4,19 @@ import Navbar from '../components/Navbar'
 
 const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 
+// Role-specific category tracks — each role gets interview categories relevant to it
+const ROLE_CATEGORIES = {
+  'Software Engineer Intern': ['DSA', 'Behavioral', 'HR', 'System Design'],
+  'Data Analyst': ['SQL', 'Statistics', 'Behavioral', 'HR'],
+  'Frontend Developer': ['JavaScript & DOM', 'Frontend System Design', 'Behavioral', 'HR'],
+  'Backend Developer': ['DSA', 'System Design', 'Databases', 'Behavioral', 'HR'],
+  'Full Stack Developer': ['DSA', 'System Design', 'Frontend', 'Backend', 'Behavioral', 'HR']
+}
+
 function Interview() {
   const [sessionId] = useState(() => crypto.randomUUID())
   const [role, setRole] = useState('Software Engineer Intern')
-  const [category, setCategory] = useState('DSA')
+  const [category, setCategory] = useState(ROLE_CATEGORIES['Software Engineer Intern'][0])
   const [difficulty, setDifficulty] = useState('Easy')
   const [question, setQuestion] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -17,6 +26,11 @@ function Interview() {
   const [userAnswer, setUserAnswer] = useState('')
   const [feedback, setFeedback] = useState(null)
   const [evaluating, setEvaluating] = useState(false)
+
+  const handleRoleChange = (newRole) => {
+    setRole(newRole)
+    setCategory(ROLE_CATEGORIES[newRole][0])
+  }
 
   const generateQuestion = async () => {
     setLoading(true)
@@ -61,7 +75,6 @@ function Interview() {
   }
 
   const nextQuestion = async () => {
-    // Save session only if feedback exists (answer was submitted)
     if (feedback && question) {
       try {
         const token = localStorage.getItem('token')
@@ -73,7 +86,8 @@ function Interview() {
             score: feedback.score,
             category,
             difficulty,
-            sessionId
+            sessionId,
+            role
           },
           { headers: { Authorization: `Bearer ${token}` } }
         )
@@ -93,21 +107,18 @@ function Interview() {
             <h3 style={{ color: '#555', marginBottom: '20px' }}>Select Interview Type</h3>
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', color: '#666' }}>Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px' }}>
-                <option>Software Engineer Intern</option>
-                <option>Data Analyst</option>
-                <option>Frontend Developer</option>
-                <option>Backend Developer</option>
-                <option>Full Stack Developer</option>
+              <select value={role} onChange={(e) => handleRoleChange(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px' }}>
+                {Object.keys(ROLE_CATEGORIES).map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
               </select>
             </div>
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', color: '#666' }}>Category</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px' }}>
-                <option>DSA</option>
-                <option>Behavioral</option>
-                <option>HR</option>
-                <option>System Design</option>
+                {ROLE_CATEGORIES[role].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
               </select>
             </div>
             <div style={{ marginBottom: '20px' }}>

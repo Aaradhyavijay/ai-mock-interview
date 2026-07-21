@@ -74,12 +74,12 @@ const evaluateAnswer = async (req, res) => {
 
 const saveSession = async (req, res) => {
   try {
-    const { question, userAnswer, score, category, difficulty, sessionId } = req.body;
+    const { question, userAnswer, score, category, difficulty, sessionId, role } = req.body;
     const userId = req.userId;
 
     await pool.query(
-      'INSERT INTO "Session" ("userId", question, "userAnswer", score, category, difficulty, "sessionId", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
-      [userId, question, userAnswer, score, category, difficulty, sessionId]
+      'INSERT INTO "Session" ("userId", question, "userAnswer", score, category, difficulty, "sessionId", "role", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
+      [userId, question, userAnswer, score, category, difficulty, sessionId, role]
     );
 
     res.json({ success: true });
@@ -98,11 +98,21 @@ const getStats = async (req, res) => {
       [userId]
     );
 
+    const roleBreakdown = await pool.query(
+      'SELECT "role", COUNT(*) as questions, ROUND(AVG(score), 1) as avgScore FROM "Session" WHERE "userId" = $1 AND "role" IS NOT NULL GROUP BY "role" ORDER BY questions DESC',
+      [userId]
+    );
+
     const stats = result.rows[0];
     res.json({
       questionsPracticed: parseInt(stats.total) || 0,
       sessionsCompleted: parseInt(stats.sessions) || 0,
-      avgScore: parseFloat(stats.avgscore) || 0
+      avgScore: parseFloat(stats.avgscore) || 0,
+      roleBreakdown: roleBreakdown.rows.map(r => ({
+        role: r.role,
+        questions: parseInt(r.questions),
+        avgScore: parseFloat(r.avgscore)
+      }))
     });
   } catch (err) {
     console.error(err);

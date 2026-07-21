@@ -8,7 +8,7 @@ const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 function Dashboard() {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const [stats, setStats] = useState({ questionsPracticed: 0, sessionsCompleted: 0, avgScore: 0 })
+  const [stats, setStats] = useState({ questionsPracticed: 0, sessionsCompleted: 0, avgScore: 0, roleBreakdown: [] })
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -50,6 +50,23 @@ function Dashboard() {
               <p style={{ color: '#666', margin: '5px 0 0' }}>Average Score</p>
             </div>
           </div>
+
+          {stats.roleBreakdown && stats.roleBreakdown.length > 0 && (
+            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+              <h3 style={{ color: '#333', marginBottom: '20px' }}>📊 Performance by Role</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {stats.roleBreakdown.map((r) => (
+                  <div key={r.role} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                    <div>
+                      <span style={{ fontWeight: '600', color: '#333' }}>{r.role}</span>
+                      <span style={{ color: '#888', marginLeft: '10px', fontSize: '13px' }}>{r.questions} question{r.questions !== 1 ? 's' : ''}</span>
+                    </div>
+                    <span style={{ fontWeight: 'bold', color: '#4f46e5' }}>{r.avgScore}/10</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
             <h3 style={{ color: '#333', marginBottom: '20px' }}>🚀 Quick Start</h3>
