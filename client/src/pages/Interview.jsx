@@ -1,16 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import Navbar from '../components/Navbar'
 
 const API_URL = 'https://ai-mock-interview-backend-bip7.onrender.com'
 
-// Role-specific category tracks — each role gets interview categories relevant to it
 const ROLE_CATEGORIES = {
   'Software Engineer Intern': ['DSA', 'Behavioral', 'HR', 'System Design'],
   'Data Analyst': ['SQL', 'Statistics', 'Behavioral', 'HR'],
   'Frontend Developer': ['JavaScript & DOM', 'Frontend System Design', 'Behavioral', 'HR'],
   'Backend Developer': ['DSA', 'System Design', 'Databases', 'Behavioral', 'HR'],
   'Full Stack Developer': ['DSA', 'System Design', 'Frontend', 'Backend', 'Behavioral', 'HR']
+}
+
+// Time allotted per question, based on difficulty (mirrors real interview pacing)
+const DIFFICULTY_TIME = {
+  Easy: 90,
+  Medium: 120,
+  Hard: 180
 }
 
 function Interview() {
@@ -26,11 +32,37 @@ function Interview() {
   const [userAnswer, setUserAnswer] = useState('')
   const [feedback, setFeedback] = useState(null)
   const [evaluating, setEvaluating] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(null)
+  const [timeUp, setTimeUp] = useState(false)
+  const timerRef = useRef(null)
 
   const handleRoleChange = (newRole) => {
     setRole(newRole)
     setCategory(ROLE_CATEGORIES[newRole][0])
   }
+
+  // Countdown effect — runs whenever a fresh question is loaded
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+
+    if (question && !feedback) {
+      setTimeLeft(DIFFICULTY_TIME[difficulty])
+      setTimeUp(false)
+
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current)
+            setTimeUp(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => clearInterval(timerRef.current)
+  }, [question])
 
   const generateQuestion = async () => {
     setLoading(true)
@@ -39,6 +71,7 @@ function Interview() {
     setShowAnswer(false)
     setUserAnswer('')
     setFeedback(null)
+    setTimeUp(false)
     try {
       const token = localStorage.getItem('token')
       const res = await axios.post(
@@ -58,6 +91,7 @@ function Interview() {
       alert('Please write an answer first!')
       return
     }
+    clearInterval(timerRef.current)
     setEvaluating(true)
     setFeedback(null)
     try {
@@ -97,6 +131,14 @@ function Interview() {
     }
     generateQuestion()
   }
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
+  const timerColor = timeLeft <= 15 ? '#dc2626' : timeLeft <= 30 ? '#f59e0b' : '#4f46e5'
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
@@ -138,8 +180,21 @@ function Interview() {
 
           {question && (
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-              <h3 style={{ color: '#4f46e5', marginBottom: '15px' }}>📝 Question</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ color: '#4f46e5', margin: 0 }}>📝 Question</h3>
+                {!feedback && timeLeft !== null && (
+                  <span style={{ fontSize: '20px', fontWeight: 'bold', color: timerColor, fontFamily: 'monospace' }}>
+                    ⏱️ {formatTime(timeLeft)}
+                  </span>
+                )}
+              </div>
               <p style={{ fontSize: '16px', color: '#333', lineHeight: '1.6', marginBottom: '20px' }}>{question.question}</p>
+
+              {timeUp && !feedback && (
+                <p style={{ color: '#dc2626', backgroundColor: '#fef2f2', padding: '10px 15px', borderRadius: '5px', marginBottom: '15px', fontWeight: '600' }}>
+                  ⏰ Time's up! You can still submit your answer, but try to be quicker next time.
+                </p>
+              )}
 
               <h4 style={{ color: '#555', marginBottom: '10px' }}>✍️ Your Answer</h4>
               <textarea value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} placeholder="Write your answer here..."
