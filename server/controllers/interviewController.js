@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
 const { Pool } = require('pg');
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -133,8 +133,10 @@ const uploadResume = async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const parsed = await pdfParse(req.file.buffer);
+    const parser = new PDFParse({ data: req.file.buffer });
+    const parsed = await parser.getText();
     const resumeText = parsed.text.trim();
+    await parser.destroy();
 
     if (!resumeText) {
       return res.status(400).json({ error: 'Could not extract text from this PDF' });
