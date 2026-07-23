@@ -12,7 +12,6 @@ const ROLE_CATEGORIES = {
   'Full Stack Developer': ['DSA', 'System Design', 'Frontend', 'Backend', 'Behavioral', 'HR']
 }
 
-// Time allotted per question, based on difficulty (mirrors real interview pacing)
 const DIFFICULTY_TIME = {
   Easy: 90,
   Medium: 120,
@@ -36,12 +35,71 @@ function Interview() {
   const [timeUp, setTimeUp] = useState(false)
   const timerRef = useRef(null)
 
+  const [resumeText, setResumeText] = useState(null)
+  const [resumeFileName, setResumeFileName] = useState('')
+  const [uploadingResume, setUploadingResume] = useState(false)
+  const [resumeError, setResumeError] = useState('')
+
+  // On page load, check if the user already has a resume saved from a previous session
+  useEffect(() => {
+    const fetchResume = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await axios.get(`${API_URL}/api/interview/resume`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.data.resumeText) {
+          setResumeText(res.data.resumeText)
+        }
+      } catch (err) {
+        console.error('Failed to fetch saved resume:', err)
+      }
+    }
+    fetchResume()
+  }, [])
+
   const handleRoleChange = (newRole) => {
     setRole(newRole)
     setCategory(ROLE_CATEGORIES[newRole][0])
   }
 
-  // Countdown effect — runs whenever a fresh question is loaded
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (file.type !== 'application/pdf') {
+      setResumeError('Please upload a PDF file')
+      return
+    }
+
+    setResumeError('')
+    setUploadingResume(true)
+    setResumeFileName(file.name)
+
+    const formData = new FormData()
+    formData.append('resume', file)
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.post(`${API_URL}/api/interview/upload-resume`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      setResumeText(res.data.resumeText)
+    } catch (err) {
+      setResumeError('Failed to process resume. Try a different PDF.')
+      setResumeFileName('')
+    }
+    setUploadingResume(false)
+  }
+
+  const removeResume = () => {
+    setResumeText(null)
+    setResumeFileName('')
+  }
+
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current)
 
@@ -76,7 +134,7 @@ function Interview() {
       const token = localStorage.getItem('token')
       const res = await axios.post(
         `${API_URL}/api/interview/generate-question`,
-        { role, category, difficulty },
+        { role, category, difficulty, resumeText },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setQuestion(res.data.data)
@@ -145,6 +203,29 @@ function Interview() {
       <Navbar />
       <div style={{ padding: '40px 20px' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+            <h3 style={{ color: '#555', marginBottom: '10px' }}>📄 Resume (Optional)</h3>
+            <p style={{ color: '#888', fontSize: '13px', marginBottom: '15px' }}>Upload your resume to get questions tailored to your actual skills and projects.</p>
+
+            {resumeText ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#ecfdf5', borderRadius: '8px', border: '1px solid #6ee7b7' }}>
+                <span style={{ color: '#065f46', fontSize: '14px' }}>✅ Resume attached{resumeFileName ? `: ${resumeFileName}` : ''}</span>
+                <button onClick={removeResume} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label style={{ display: 'inline-block', padding: '10px 20px', backgroundColor: uploadingResume ? '#aaa' : '#4f46e5', color: 'white', borderRadius: '5px', cursor: uploadingResume ? 'not-allowed' : 'pointer', fontSize: '14px' }}>
+                  {uploadingResume ? '⏳ Processing...' : '📎 Upload PDF Resume'}
+                  <input type="file" accept="application/pdf" onChange={handleResumeUpload} disabled={uploadingResume} style={{ display: 'none' }} />
+                </label>
+                {resumeError && <p style={{ color: 'red', fontSize: '13px', marginTop: '8px' }}>{resumeError}</p>}
+              </div>
+            )}
+          </div>
+
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
             <h3 style={{ color: '#555', marginBottom: '20px' }}>Select Interview Type</h3>
             <div style={{ marginBottom: '15px' }}>

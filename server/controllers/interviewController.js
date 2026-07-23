@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
 const { Pool } = require('pg');
+const pdfParse = require('pdf-parse');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -12,12 +13,17 @@ const models = [
 ];
 
 const generateQuestion = async (req, res) => {
-  const { role, category, difficulty } = req.body;
+  const { role, category, difficulty, resumeText } = req.body;
+
+  // If the user has a resume on file, ground the question in their actual background
+  const resumeContext = resumeText
+    ? `\n\nThe candidate's resume includes the following background — tailor the question to their actual skills/projects where relevant:\n${resumeText.slice(0, 3000)}`
+    : '';
 
   const prompt = `You are an expert technical interviewer. Generate 1 interview question for the following:
     Role: ${role}
     Category: ${category}
-    Difficulty: ${difficulty}
+    Difficulty: ${difficulty}${resumeContext}
     
     Respond in this exact JSON format only, no extra text:
     {
@@ -120,4 +126,47 @@ const getStats = async (req, res) => {
   }
 };
 
-module.exports = { generateQuestion, evaluateAnswer, saveSession, getStats };
+// Extracts text from an uploaded PDF resume and saves it against the user's account
+const uploadResume = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const parsed = await pdfParse(req.file.buffer);
+    const resumeText = parsed.text.trim();
+
+    if (!resumeText) {
+      return res.status(400).json({ error: 'Could not extract text from this PDF' });
+    }
+
+    const userId = req.userId;
+    await pool.query(
+      'UPDATE "User" SET "resumeText" = $1 WHERE id = $2',
+      [resumeText, userId]
+    );
+
+    res.json({ success: true, resumeText });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to process resume' });
+  }
+};
+
+// Returns the currently saved resume text, if any, so the frontend can pre-fill it
+const getResume = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const result = await pool.query(
+      'SELECT "resumeText" FROM "User" WHERE id = $1',
+      [userId]
+    );
+
+    res.json({ resumeText: result.rows[0]?.resumeText || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch resume' });
+  }
+};
+
+module.exports = { generateQuestion, evaluateAnswer, saveSession, getStats, uploadResume, getResume };

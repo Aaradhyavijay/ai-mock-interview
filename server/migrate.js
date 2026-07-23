@@ -35,6 +35,10 @@ async function migrate() {
     ALTER TABLE "Session" ADD COLUMN IF NOT EXISTS "role" VARCHAR(100)
   `);
 
+  await pool.query(`
+    ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "resumeText" TEXT
+  `);
+
   console.log('Tables created!');
   await pool.end();
 }
