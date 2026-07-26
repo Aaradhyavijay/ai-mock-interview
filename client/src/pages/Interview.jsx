@@ -18,6 +18,10 @@ const DIFFICULTY_TIME = {
   Hard: 180
 }
 
+// Web Speech API isn't available in all browsers (e.g. Firefox) — check once at module load
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+const SPEECH_SUPPORTED = !!SpeechRecognitionAPI
+
 function Interview() {
   const [sessionId] = useState(() => crypto.randomUUID())
   const [role, setRole] = useState('Software Engineer Intern')
@@ -40,7 +44,11 @@ function Interview() {
   const [uploadingResume, setUploadingResume] = useState(false)
   const [resumeError, setResumeError] = useState('')
 
-  // On page load, check if the user already has a resume saved from a previous session
+  const [isListening, setIsListening] = useState(false)
+  const [speechError, setSpeechError] = useState('')
+  const recognitionRef = useRef(null)
+  const baseAnswerRef = useRef('') // answer text before the current recording session started
+
   useEffect(() => {
     const fetchResume = async () => {
       try {
@@ -57,6 +65,58 @@ function Interview() {
     }
     fetchResume()
   }, [])
+
+  // Set up the speech recognition instance once
+  useEffect(() => {
+    if (!SPEECH_SUPPORTED) return
+
+    const recognition = new SpeechRecognitionAPI()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onresult = (event) => {
+      let transcript = ''
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript
+      }
+      const separator = baseAnswerRef.current.trim() ? ' ' : ''
+      setUserAnswer(baseAnswerRef.current + separator + transcript)
+    }
+
+    recognition.onerror = (event) => {
+      if (event.error === 'not-allowed') {
+        setSpeechError('Microphone access denied. Please allow microphone access to use voice input.')
+      } else if (event.error !== 'no-speech') {
+        setSpeechError('Voice recognition error. Please try again or type your answer.')
+      }
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognitionRef.current = recognition
+
+    return () => {
+      recognition.stop()
+    }
+  }, [])
+
+  const toggleListening = () => {
+    if (!SPEECH_SUPPORTED || !recognitionRef.current) return
+
+    if (isListening) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    } else {
+      setSpeechError('')
+      baseAnswerRef.current = userAnswer
+      recognitionRef.current.start()
+      setIsListening(true)
+    }
+  }
 
   const handleRoleChange = (newRole) => {
     setRole(newRole)
@@ -130,6 +190,10 @@ function Interview() {
     setUserAnswer('')
     setFeedback(null)
     setTimeUp(false)
+    setSpeechError('')
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
     try {
       const token = localStorage.getItem('token')
       const res = await axios.post(
@@ -148,6 +212,10 @@ function Interview() {
     if (!userAnswer.trim()) {
       alert('Please write an answer first!')
       return
+    }
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsListening(false)
     }
     clearInterval(timerRef.current)
     setEvaluating(true)
@@ -277,9 +345,33 @@ function Interview() {
                 </p>
               )}
 
-              <h4 style={{ color: '#555', marginBottom: '10px' }}>✍️ Your Answer</h4>
-              <textarea value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} placeholder="Write your answer here..."
-                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px', minHeight: '120px', resize: 'vertical', boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ color: '#555', margin: 0 }}>✍️ Your Answer</h4>
+                {SPEECH_SUPPORTED && (
+                  <button onClick={toggleListening} disabled={evaluating || !!feedback}
+                    style={{
+                      padding: '6px 14px',
+                      backgroundColor: isListening ? '#dc2626' : '#f0f2f5',
+                      color: isListening ? 'white' : '#4f46e5',
+                      border: isListening ? 'none' : '1px solid #4f46e5',
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      cursor: (evaluating || feedback) ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                    {isListening ? '🔴 Listening... (tap to stop)' : '🎤 Speak Answer'}
+                  </button>
+                )}
+              </div>
+
+              {speechError && (
+                <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '10px' }}>{speechError}</p>
+              )}
+
+              <textarea value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} placeholder="Write your answer here, or use the mic to speak it..."
+                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: isListening ? '2px solid #dc2626' : '1px solid #ddd', fontSize: '14px', minHeight: '120px', resize: 'vertical', boxSizing: 'border-box' }} />
 
               <button onClick={submitAnswer} disabled={evaluating}
                 style={{ marginTop: '15px', width: '100%', padding: '12px', backgroundColor: evaluating ? '#aaa' : '#3b82f6', color: 'white', border: 'none', borderRadius: '5px', fontSize: '16px', fontWeight: 'bold', cursor: evaluating ? 'not-allowed' : 'pointer' }}>
