@@ -15,6 +15,28 @@ app.get('/', (req, res) => {
   res.json({ message: 'AI Mock Interview API running ✅' });
 });
 
+// Public platform-wide stats — total users & total questions practiced across everyone
+app.get('/api/platform-stats', async (req, res) => {
+  try {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+    const usersResult = await pool.query('SELECT COUNT(*) as total FROM "User"');
+    const questionsResult = await pool.query('SELECT COUNT(*) as total FROM "Session"');
+    const sessionsResult = await pool.query('SELECT COUNT(DISTINCT "sessionId") as total FROM "Session" WHERE "sessionId" IS NOT NULL');
+    const avgScoreResult = await pool.query('SELECT ROUND(AVG(score), 1) as avg FROM "Session" WHERE score IS NOT NULL');
+
+    res.json({
+      totalUsers: parseInt(usersResult.rows[0].total) || 0,
+      totalQuestionsPracticed: parseInt(questionsResult.rows[0].total) || 0,
+      totalInterviewSessions: parseInt(sessionsResult.rows[0].total) || 0,
+      platformAvgScore: parseFloat(avgScoreResult.rows[0].avg) || 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/migrate', async (req, res) => {
   try {
     const { Pool } = require('pg');
