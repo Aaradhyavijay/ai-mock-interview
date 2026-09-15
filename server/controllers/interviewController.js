@@ -16,7 +16,6 @@ const models = [
 const generateQuestion = async (req, res) => {
   const { role, category, difficulty, resumeText } = req.body;
 
-  // If the user has a resume on file, ground the question in their actual background
   const resumeContext = resumeText
     ? `\n\nThe candidate's resume includes the following background — tailor the question to their actual skills/projects where relevant:\n${resumeText.slice(0, 3000)}`
     : '';
@@ -84,11 +83,8 @@ const saveSession = async (req, res) => {
     const { question, userAnswer, score, category, difficulty, role } = req.body;
     const userId = req.userId;
 
-    // The DB's Session table has an extra "sessionId" varchar column (legacy, not in schema.prisma)
-    // that's required — generate a unique string for it.
     const sessionIdString = crypto.randomUUID();
 
-    // Step 1: Create the Session row (one interview question attempt = one session here)
     const sessionResult = await pool.query(
       'INSERT INTO "Session" ("userId", "role", "category", "difficulty", "score", "createdAt", "sessionId") VALUES ($1, $2, $3, $4, $5, NOW(), $6) RETURNING id',
       [userId, role, category, difficulty, score, sessionIdString]
@@ -96,7 +92,6 @@ const saveSession = async (req, res) => {
 
     const sessionId = sessionResult.rows[0].id;
 
-    // Step 2: Create the Answer row, linked to that Session
     await pool.query(
       'INSERT INTO "Answer" ("sessionId", "question", "userAnswer", "feedback", "score") VALUES ($1, $2, $3, $4, $5)',
       [sessionId, question, userAnswer, req.body.feedback || '', score]
@@ -113,8 +108,6 @@ const getStats = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // questionsPracticed = number of Answer rows (each answer = one question attempted)
-    // sessionsCompleted = number of Session rows for this user
     const result = await pool.query(
       `SELECT
          (SELECT COUNT(*) FROM "Answer" a JOIN "Session" s ON a."sessionId" = s.id WHERE s."userId" = $1) as total,
@@ -142,6 +135,68 @@ const getStats = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to get stats' });
+  }
+};
+
+// getQuestionHistory = returns the actual list of questions the user has practiced,
+// with their answer, score, feedback, and session context (role/category/difficulty/date).
+// Supports optional filters via query params: ?role=&category=&difficulty=
+const getQuestionHistory = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { role, category, difficulty } = req.query;
+
+    const conditions = ['s."userId" = $1'];
+    const params = [userId];
+
+    if (role) {
+      params.push(role);
+      conditions.push(`s."role" = $${params.length}`);
+    }
+    if (category) {
+      params.push(category);
+      conditions.push(`s."category" = $${params.length}`);
+    }
+    if (difficulty) {
+      params.push(difficulty);
+      conditions.push(`s."difficulty" = $${params.length}`);
+    }
+
+    const result = await pool.query(
+      `SELECT
+         a."id",
+         a."question",
+         a."userAnswer",
+         a."feedback",
+         a."score",
+         s."role",
+         s."category",
+         s."difficulty",
+         s."createdAt"
+       FROM "Answer" a
+       JOIN "Session" s ON a."sessionId" = s.id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY s."createdAt" DESC`,
+      params
+    );
+
+    res.json({
+      count: result.rows.length,
+      questions: result.rows.map(r => ({
+        id: r.id,
+        question: r.question,
+        userAnswer: r.userAnswer,
+        feedback: r.feedback,
+        score: r.score,
+        role: r.role,
+        category: r.category,
+        difficulty: r.difficulty,
+        date: r.createdAt
+      }))
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to get question history' });
   }
 };
 
@@ -190,4 +245,4 @@ const getResume = async (req, res) => {
   }
 };
 
-module.exports = { generateQuestion, evaluateAnswer, saveSession, getStats, uploadResume, getResume };
+module.exports = { generateQuestion, evaluateAnswer, saveSession, getStats, getQuestionHistory, uploadResume, getResume };

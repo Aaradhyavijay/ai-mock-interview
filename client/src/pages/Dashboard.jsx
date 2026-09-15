@@ -37,9 +37,13 @@ function Dashboard() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+            <div
+              onClick={() => navigate('/history')}
+              style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center', cursor: 'pointer' }}
+            >
               <h2 style={{ color: '#4f46e5', fontSize: '36px', margin: 0 }}>{stats.questionsPracticed}</h2>
               <p style={{ color: '#666', margin: '5px 0 0' }}>Questions Practiced</p>
+              <p style={{ color: '#4f46e5', margin: '4px 0 0', fontSize: '12px', fontWeight: '600' }}>View All →</p>
             </div>
             <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
               <h2 style={{ color: '#10b981', fontSize: '36px', margin: 0 }}>{stats.sessionsCompleted}</h2>

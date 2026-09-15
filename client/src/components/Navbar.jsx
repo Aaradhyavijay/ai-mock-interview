@@ -39,6 +39,12 @@ function Navbar() {
         >
           Dashboard
         </span>
+        <span
+          onClick={() => navigate('/history')}
+          style={{ color: 'white', cursor: 'pointer', fontSize: '14px' }}
+        >
+          History
+        </span>
         <span style={{ color: '#c7d2fe', fontSize: '14px' }}>
           Hi, {user.name || 'User'}!
         </span>
