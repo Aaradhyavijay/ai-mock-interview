@@ -2,6 +2,7 @@ require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
 const { Pool } = require('pg');
 const { PDFParse } = require('pdf-parse');
+const crypto = require('crypto');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -80,15 +81,28 @@ const evaluateAnswer = async (req, res) => {
 
 const saveSession = async (req, res) => {
   try {
-    const { question, userAnswer, score, category, difficulty, sessionId, role } = req.body;
+    const { question, userAnswer, score, category, difficulty, role } = req.body;
     const userId = req.userId;
 
-    await pool.query(
-      'INSERT INTO "Session" ("userId", question, "userAnswer", score, category, difficulty, "sessionId", "role", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
-      [userId, question, userAnswer, score, category, difficulty, sessionId, role]
+    // The DB's Session table has an extra "sessionId" varchar column (legacy, not in schema.prisma)
+    // that's required — generate a unique string for it.
+    const sessionIdString = crypto.randomUUID();
+
+    // Step 1: Create the Session row (one interview question attempt = one session here)
+    const sessionResult = await pool.query(
+      'INSERT INTO "Session" ("userId", "role", "category", "difficulty", "score", "createdAt", "sessionId") VALUES ($1, $2, $3, $4, $5, NOW(), $6) RETURNING id',
+      [userId, role, category, difficulty, score, sessionIdString]
     );
 
-    res.json({ success: true });
+    const sessionId = sessionResult.rows[0].id;
+
+    // Step 2: Create the Answer row, linked to that Session
+    await pool.query(
+      'INSERT INTO "Answer" ("sessionId", "question", "userAnswer", "feedback", "score") VALUES ($1, $2, $3, $4, $5)',
+      [sessionId, question, userAnswer, req.body.feedback || '', score]
+    );
+
+    res.json({ success: true, sessionId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save session' });
@@ -99,8 +113,13 @@ const getStats = async (req, res) => {
   try {
     const userId = req.userId;
 
+    // questionsPracticed = number of Answer rows (each answer = one question attempted)
+    // sessionsCompleted = number of Session rows for this user
     const result = await pool.query(
-      'SELECT COUNT(*) as total, COUNT(DISTINCT "sessionId") as sessions, ROUND(AVG(score), 1) as avgScore FROM "Session" WHERE "userId" = $1',
+      `SELECT
+         (SELECT COUNT(*) FROM "Answer" a JOIN "Session" s ON a."sessionId" = s.id WHERE s."userId" = $1) as total,
+         (SELECT COUNT(*) FROM "Session" WHERE "userId" = $1) as sessions,
+         (SELECT ROUND(AVG(score), 1) FROM "Session" WHERE "userId" = $1) as avgscore`,
       [userId]
     );
 
