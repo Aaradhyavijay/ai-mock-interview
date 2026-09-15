@@ -119,12 +119,12 @@ const getStats = async (req, res) => {
       `SELECT
          (SELECT COUNT(*) FROM "Answer" a JOIN "Session" s ON a."sessionId" = s.id WHERE s."userId" = $1) as total,
          (SELECT COUNT(*) FROM "Session" WHERE "userId" = $1) as sessions,
-         (SELECT ROUND(AVG(score), 1) FROM "Session" WHERE "userId" = $1) as avgscore`,
+         (SELECT ROUND(AVG(score)::numeric, 1) FROM "Session" WHERE "userId" = $1) as avgscore`,
       [userId]
     );
 
     const roleBreakdown = await pool.query(
-      'SELECT "role", COUNT(*) as questions, ROUND(AVG(score), 1) as avgScore FROM "Session" WHERE "userId" = $1 AND "role" IS NOT NULL GROUP BY "role" ORDER BY questions DESC',
+      'SELECT "role", COUNT(*) as questions, ROUND(AVG(score)::numeric, 1) as avgScore FROM "Session" WHERE "userId" = $1 AND "role" IS NOT NULL GROUP BY "role" ORDER BY questions DESC',
       [userId]
     );
 
