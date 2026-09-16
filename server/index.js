@@ -24,8 +24,7 @@ app.get('/api/platform-stats', async (req, res) => {
     const usersResult = await pool.query('SELECT COUNT(*) as total FROM "User"');
     const questionsResult = await pool.query('SELECT COUNT(*) as total FROM "Session"');
     const sessionsResult = await pool.query('SELECT COUNT(DISTINCT "sessionId") as total FROM "Session" WHERE "sessionId" IS NOT NULL');
-    const avgScoreResult = await pool.query('SELECT ROUND(AVG(score), 1) as avg FROM "Session" WHERE score IS NOT NULL');
-
+    const avgScoreResult = await pool.query('SELECT ROUND(AVG(score)::numeric, 1) as avg FROM "Session" WHERE score IS NOT NULL');
     res.json({
       totalUsers: parseInt(usersResult.rows[0].total) || 0,
       totalQuestionsPracticed: parseInt(questionsResult.rows[0].total) || 0,
